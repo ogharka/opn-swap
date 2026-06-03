@@ -1,0 +1,12 @@
+{
+  "network": "OPN Testnet",
+  "chainId": 984,
+  "note": "Run: npm run deploy to populate real addresses",
+  "contracts": {
+    "OPNSwap": "",
+    "USDC": "",
+    "WETH": "",
+    "DAI": "",
+    "USDT": ""
+  }
+}

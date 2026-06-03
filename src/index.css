@@ -1,0 +1,35 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --purple: #6C5CE7;
+  --purple-light: #EEF0FF;
+  --purple-mid: #A29BFE;
+  --green: #00B894;
+  --green-light: #E8FBF6;
+  --red: #E74C3C;
+  --red-light: #FFF0F0;
+  --amber: #FDCB6E;
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface2: #F2F3F7;
+  --border: rgba(0,0,0,0.07);
+  --border-strong: rgba(0,0,0,0.13);
+  --text: #1A1A2E;
+  --text2: #6B7280;
+  --text3: #9CA3AF;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type=number] { -moz-appearance: textfield; }
