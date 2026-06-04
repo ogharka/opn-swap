@@ -78,6 +78,8 @@ export default function SwapCard({ account, onConnect }) {
       setToAmount('');
       setSwapDone(true);
       setTimeout(() => setSwapDone(false), 2500);
+      setSwapDone(true);
+      setTimeout(() => setSwapDone(false), 2500);
     } catch {}
   };
 
