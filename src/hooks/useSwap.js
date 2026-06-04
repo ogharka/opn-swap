@@ -8,6 +8,8 @@ export function useSwap(account) {
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
 
+  const resetTx = useCallback(() => { setTxHash(null); setError(null); }, []);
+
   const getContracts = useCallback(() => {
     if (!window.ethereum || !account) return null;
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -19,7 +21,6 @@ export function useSwap(account) {
     }));
   }, [account]);
 
-  // Get real-time quote from contract
   const getQuote = useCallback(async (tokenInAddr, tokenOutAddr, amountIn, decimalsIn) => {
     if (!addresses.contracts.OPNSwap || !window.ethereum) return null;
     try {
@@ -33,7 +34,6 @@ export function useSwap(account) {
     }
   }, []);
 
-  // Get token balance
   const getBalance = useCallback(async (tokenAddr, userAddr, decimals) => {
     if (!window.ethereum || !userAddr || !tokenAddr || tokenAddr === 'NATIVE') return '0';
     try {
@@ -46,44 +46,24 @@ export function useSwap(account) {
     }
   }, []);
 
-  // Approve + Swap (sends OPN fee with tx)
-  const executeSwap = useCallback(async ({
-    tokenIn, tokenOut, amountIn, slippageBps = 50
-  }) => {
+  const executeSwap = useCallback(async ({ tokenIn, tokenOut, amountIn, slippageBps = 50 }) => {
     setLoading(true);
     setError(null);
     setTxHash(null);
     try {
       const ctx = await getContracts();
       if (!ctx) throw new Error('Wallet not connected');
-
       const tokenInContract = ctx.erc20(tokenIn.address);
       const parsedIn = ethers.parseUnits(amountIn.toString(), tokenIn.decimals);
-
-      // Check & set allowance
       const allowance = await tokenInContract.allowance(account, addresses.contracts.OPNSwap);
       if (allowance < parsedIn) {
         const approveTx = await tokenInContract.approve(addresses.contracts.OPNSwap, ethers.MaxUint256);
         await approveTx.wait();
       }
-
-      // Get quote for min out
       const quote = await getQuote(tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals);
-      const minOut = quote
-        ? (quote.amountOut * BigInt(10000 - slippageBps)) / BigInt(10000)
-        : 0n;
-
-      // Swap fee in OPN (0.001 OPN)
+      const minOut = quote ? (quote.amountOut * BigInt(10000 - slippageBps)) / BigInt(10000) : 0n;
       const swapFee = ethers.parseEther('0.001');
-
-      const tx = await ctx.swap.swap(
-        tokenIn.address,
-        tokenOut.address,
-        parsedIn,
-        minOut,
-        account,
-        { value: swapFee }
-      );
+      const tx = await ctx.swap.swap(tokenIn.address, tokenOut.address, parsedIn, minOut, account, { value: swapFee });
       setTxHash(tx.hash);
       await tx.wait();
       return tx.hash;
@@ -95,7 +75,6 @@ export function useSwap(account) {
     }
   }, [account, getContracts, getQuote]);
 
-  // Claim testnet tokens from faucet
   const claimFaucet = useCallback(async (tokenAddr, decimals) => {
     if (!tokenAddr || tokenAddr === 'NATIVE' || tokenAddr === '') {
       setError('This token has no faucet');
@@ -118,5 +97,5 @@ export function useSwap(account) {
     }
   }, [account, getContracts]);
 
-  return { executeSwap, getQuote, getBalance, claimFaucet, loading, txHash, error };
+  return { executeSwap, getQuote, getBalance, claimFaucet, loading, txHash, error, resetTx };
 }

@@ -7,8 +7,8 @@ import { ethers } from 'ethers';
 const SLIPPAGE = [0.1, 0.5, 1.0];
 
 export default function SwapCard({ account, onConnect }) {
-  const [fromToken, setFromToken] = useState(TOKENS[1]); // USDC
-  const [toToken, setToToken] = useState(TOKENS[2]);   // WETH
+  const [fromToken, setFromToken] = useState(TOKENS[1]);
+  const [toToken, setToToken] = useState(TOKENS[2]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [slippage, setSlippage] = useState(0.5);
@@ -19,7 +19,15 @@ export default function SwapCard({ account, onConnect }) {
   const [quoting, setQuoting] = useState(false);
   const [priceImpact, setPriceImpact] = useState(null);
 
-  const { executeSwap, getQuote, getBalance, claimFaucet, loading, txHash, error } = useSwap(account);
+  const { executeSwap, getQuote, getBalance, claimFaucet, loading, txHash, error, resetTx } = useSwap(account);
+
+  // Auto reset after 3 seconds
+  useEffect(() => {
+    if (txHash && !loading) {
+      const t = setTimeout(() => resetTx(), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [txHash, loading, resetTx]);
 
   // Load balances
   useEffect(() => {
@@ -36,7 +44,6 @@ export default function SwapCard({ account, onConnect }) {
   useEffect(() => {
     if (!fromAmount || !parseFloat(fromAmount)) { setToAmount(''); setPriceImpact(null); return; }
     if (!fromToken.address || !toToken.address || fromToken.address === 'NATIVE' || toToken.address === 'NATIVE') {
-      // Fallback to price ratio if no contract
       const rate = fromToken.price / toToken.price;
       setToAmount((parseFloat(fromAmount) * rate).toFixed(6));
       return;
@@ -66,12 +73,7 @@ export default function SwapCard({ account, onConnect }) {
   const handleSwap = async () => {
     if (!account) { onConnect(); return; }
     try {
-      await executeSwap({
-        tokenIn: fromToken,
-        tokenOut: toToken,
-        amountIn: fromAmount,
-        slippageBps: Math.round(slippage * 100),
-      });
+      await executeSwap({ tokenIn: fromToken, tokenOut: toToken, amountIn: fromAmount, slippageBps: Math.round(slippage * 100) });
       setFromAmount('');
       setToAmount('');
     } catch {}
@@ -81,21 +83,20 @@ export default function SwapCard({ account, onConnect }) {
   const fromUsd = hasAmount ? (parseFloat(fromAmount) * fromToken.price).toFixed(2) : null;
   const toUsd = toAmount ? (parseFloat(toAmount) * toToken.price).toFixed(2) : null;
   const minOut = toAmount ? (parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6) : null;
+  const swapDone = !!txHash && !loading;
 
   const btnLabel = loading ? 'Confirming…'
-    : txHash ? '✓ Swapped!'
+    : swapDone ? '✓ Swapped!'
     : !account ? 'Connect wallet'
     : !hasAmount ? 'Enter an amount'
     : `Swap ${fromToken.symbol} → ${toToken.symbol}`;
 
-  const btnDisabled = loading || (account && !hasAmount);
-  const swapDone = !!txHash && !loading;
+  const btnDisabled = loading || swapDone || (account && !hasAmount);
 
   return (
     <div style={S.card}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .token-opt:hover{background:var(--surface2)!important} .flip-btn:hover{background:var(--surface2)!important} .swap-btn:not(:disabled):hover{filter:brightness(0.93)}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .flip-btn:hover{background:var(--surface2)!important} .swap-btn:not(:disabled):hover{filter:brightness(0.93)}`}</style>
 
-      {/* Tabs */}
       <div style={S.tabs}>
         {['swap','limit','bridge'].map(t => (
           <button key={t} onClick={() => setActiveTab(t)} style={{ ...S.tab, ...(activeTab===t?S.tabActive:{}) }}>
@@ -107,7 +108,6 @@ export default function SwapCard({ account, onConnect }) {
         </button>
       </div>
 
-      {/* Settings */}
       {showSettings && (
         <div style={S.settingsBox}>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8, fontWeight: 500 }}>Slippage tolerance</div>
@@ -119,7 +119,6 @@ export default function SwapCard({ account, onConnect }) {
         </div>
       )}
 
-      {/* Faucet banner */}
       {account && fromToken.address && fromToken.address !== 'NATIVE' && parseFloat(fromBal) < 1 && (
         <div style={S.faucet}>
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>Need {fromToken.symbol}?</span>
@@ -129,7 +128,6 @@ export default function SwapCard({ account, onConnect }) {
         </div>
       )}
 
-      {/* From panel */}
       <div style={S.panel}>
         <div style={S.panelTop}>
           <span style={S.panelLabel}>You pay</span>
@@ -145,14 +143,12 @@ export default function SwapCard({ account, onConnect }) {
         {fromUsd && <div style={S.usdHint}>≈ ${fromUsd}</div>}
       </div>
 
-      {/* Flip */}
       <div style={S.flipWrap}>
         <button className="flip-btn" onClick={flip} style={S.flipBtn}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
         </button>
       </div>
 
-      {/* To panel */}
       <div style={S.panel}>
         <div style={S.panelTop}>
           <span style={S.panelLabel}>You receive</span>
@@ -165,29 +161,25 @@ export default function SwapCard({ account, onConnect }) {
         {toUsd && <div style={S.usdHint}>≈ ${toUsd}</div>}
       </div>
 
-      {/* Details */}
       {hasAmount && toAmount && (
         <div style={S.details}>
           <Row label="Rate" value={`1 ${fromToken.symbol} = ${(fromToken.price/toToken.price).toFixed(4)} ${toToken.symbol}`} />
           <Row label="Price impact" value={priceImpact ? `${priceImpact}%` : '< 0.01%'} valueColor={parseFloat(priceImpact) > 3 ? 'var(--red)' : 'var(--green)'} />
           <Row label="Min received" value={`${minOut} ${toToken.symbol}`} />
-          <Row label="Network fee" value="~0.002 OPN" />
+          <Row label="Swap fee" value="0.001 OPN" />
           <Row label="Route" value={`${fromToken.symbol} → ${toToken.symbol}`} badge />
         </div>
       )}
 
-      {/* Error */}
       {error && <div style={S.errorBox}>{error}</div>}
 
-      {/* Tx link */}
       {txHash && (
         <a href={`https://testnet.iopn.tech/tx/${txHash}`} target="_blank" rel="noreferrer" style={S.txLink}>
           View on explorer ↗
         </a>
       )}
 
-      {/* Swap button */}
-      <button className="swap-btn" onClick={handleSwap} disabled={btnDisabled} style={{ ...S.swapBtn, ...(swapDone?S.swapBtnDone:{}), ...(btnDisabled&&!loading?S.swapBtnOff:{}) }}>
+      <button className="swap-btn" onClick={handleSwap} disabled={btnDisabled} style={{ ...S.swapBtn, ...(swapDone?S.swapBtnDone:{}), ...(btnDisabled&&!loading&&!swapDone?S.swapBtnOff:{}) }}>
         {loading && <span style={S.spinner} />}
         {btnLabel}
       </button>
