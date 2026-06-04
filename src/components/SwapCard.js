@@ -70,7 +70,7 @@ export default function SwapCard({ account, onConnect }) {
       setLastTx(hash);
       setFromAmount(''); setToAmount('');
       setStatus('done');
-      setTimeout(() => setStatus('idle'), 2500);
+      setTimeout(() => { setStatus('idle'); setLastTx(null); }, 2500);
     } catch(e) {
       setSwapError(e.reason || e.message || 'Swap failed');
       setStatus('error');
@@ -89,7 +89,7 @@ export default function SwapCard({ account, onConnect }) {
     : !hasAmount ? 'Enter an amount'
     : `Swap ${fromToken.symbol} → ${toToken.symbol}`;
 
-  const btnDisabled = status === 'loading' || status === 'done' || (account && !hasAmount);
+  const btnDisabled = status === 'loading' || status === 'done';
 
   return (
     <div style={S.card}>
