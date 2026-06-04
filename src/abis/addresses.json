@@ -1,12 +1,12 @@
 {
   "network": "OPN Testnet",
   "chainId": 984,
-  "note": "Run: npm run deploy to populate real addresses",
+  "deployedAt": "2026-06-04T14:56:09.501Z",
   "contracts": {
-    "OPNSwap": "",
-    "USDC": "",
-    "WETH": "",
-    "DAI": "",
-    "USDT": ""
+    "OPNSwap": "0x4B1f8F773Ced8635003d4eCaC42A147267e3c89E",
+    "USDC": "0xC776a5E89B267F9b2c4AdEC2bd6e61b5f8345472",
+    "WETH": "0x59833563725e89a4eE324954cf1467c3A81E53c3",
+    "DAI": "0xCE5eD07748C3C742917B17F6840000F4AED3B6B0",
+    "USDT": "0xFB75742FacAE2BCc632f11961D61274B2CF26239"
   }
 }
