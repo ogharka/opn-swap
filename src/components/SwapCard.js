@@ -76,6 +76,8 @@ export default function SwapCard({ account, onConnect }) {
       await executeSwap({ tokenIn: fromToken, tokenOut: toToken, amountIn: fromAmount, slippageBps: Math.round(slippage * 100) });
       setFromAmount('');
       setToAmount('');
+      setSwapDone(true);
+      setTimeout(() => setSwapDone(false), 2500);
     } catch {}
   };
 
@@ -83,7 +85,7 @@ export default function SwapCard({ account, onConnect }) {
   const fromUsd = hasAmount ? (parseFloat(fromAmount) * fromToken.price).toFixed(2) : null;
   const toUsd = toAmount ? (parseFloat(toAmount) * toToken.price).toFixed(2) : null;
   const minOut = toAmount ? (parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6) : null;
-  const swapDone = !!txHash && !loading;
+  const [swapDone, setSwapDone] = useState(false);
 
   const btnLabel = loading ? 'Confirming…'
     : swapDone ? '✓ Swapped!'
