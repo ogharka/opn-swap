@@ -18,7 +18,7 @@ export default function SwapCard({ account, onConnect }) {
   const [toBal, setToBal] = useState('0');
   const [quoting, setQuoting] = useState(false);
   const [priceImpact, setPriceImpact] = useState(null);
-  const [status, setStatus] = useState('idle'); // idle | loading | done | error
+  const [status, setStatus] = useState('idle');
   const [lastTx, setLastTx] = useState(null);
   const [swapError, setSwapError] = useState(null);
 
@@ -59,6 +59,7 @@ export default function SwapCard({ account, onConnect }) {
 
   const handleSwap = async () => {
     if (!account) { onConnect(); return; }
+    if (status !== 'idle') return;
     setStatus('loading');
     setSwapError(null);
     setLastTx(null);
@@ -68,13 +69,16 @@ export default function SwapCard({ account, onConnect }) {
         amountIn: fromAmount, slippageBps: Math.round(slippage * 100)
       });
       setLastTx(hash);
-      setFromAmount(''); setToAmount('');
+      setFromAmount('');
+      setToAmount('');
       setStatus('done');
-      setTimeout(() => { setStatus('idle'); setLastTx(null); }, 2500);
+      setTimeout(() => {
+        setStatus('idle');
+        setLastTx(null);
+      }, 2500);
     } catch(e) {
       setSwapError(e.reason || e.message || 'Swap failed');
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 3000);
+      setStatus('idle');
     }
   };
 
@@ -83,17 +87,17 @@ export default function SwapCard({ account, onConnect }) {
   const toUsd = toAmount ? (parseFloat(toAmount) * toToken.price).toFixed(2) : null;
   const minOut = toAmount ? (parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6) : null;
 
-  const btnLabel = status === 'loading' ? 'Confirming…'
-    : status === 'done' ? '✓ Swapped!'
+  const btnLabel = status === 'loading' ? 'Confirming...'
+    : status === 'done' ? 'Swapped!'
     : !account ? 'Connect wallet'
     : !hasAmount ? 'Enter an amount'
-    : `Swap ${fromToken.symbol} → ${toToken.symbol}`;
+    : 'Swap ' + fromToken.symbol + ' to ' + toToken.symbol;
 
-  const btnDisabled = status === 'loading' || status === 'done';
+  const btnDisabled = status === 'loading' || status === 'done' || (!!account && !hasAmount);
 
   return (
     <div style={S.card}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .flip-btn:hover{background:var(--surface2)!important} .swap-btn:not(:disabled):hover{filter:brightness(0.93)}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       <div style={S.tabs}>
         {['swap','limit','bridge'].map(t => (
@@ -136,11 +140,11 @@ export default function SwapCard({ account, onConnect }) {
           <TokenSelector selected={fromToken} exclude={toToken.symbol} onSelect={t => { setFromToken(t); setFromAmount(''); }} />
           <input type="number" placeholder="0.00" value={fromAmount} onChange={e => setFromAmount(e.target.value)} style={S.amtInput} />
         </div>
-        {fromUsd && <div style={S.usdHint}>≈ ${fromUsd}</div>}
+        {fromUsd && <div style={S.usdHint}>approx ${fromUsd}</div>}
       </div>
 
       <div style={S.flipWrap}>
-        <button className="flip-btn" onClick={flip} style={S.flipBtn}>
+        <button onClick={flip} style={S.flipBtn}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
         </button>
       </div>
@@ -152,30 +156,31 @@ export default function SwapCard({ account, onConnect }) {
         </div>
         <div style={S.inputRow}>
           <TokenSelector selected={toToken} exclude={fromToken.symbol} onSelect={t => { setToToken(t); setToAmount(''); }} />
-          <input type="number" placeholder={quoting ? '…' : '0.00'} value={toAmount} readOnly style={{...S.amtInput,color:'var(--text2)'}} />
+          <input type="number" placeholder={quoting ? '...' : '0.00'} value={toAmount} readOnly style={{...S.amtInput,color:'var(--text2)'}} />
         </div>
-        {toUsd && <div style={S.usdHint}>≈ ${toUsd}</div>}
+        {toUsd && <div style={S.usdHint}>approx ${toUsd}</div>}
       </div>
 
       {hasAmount && toAmount && (
         <div style={S.details}>
-          <Row label="Rate" value={`1 ${fromToken.symbol} = ${(fromToken.price/toToken.price).toFixed(4)} ${toToken.symbol}`} />
-          <Row label="Price impact" value={priceImpact ? `${priceImpact}%` : '< 0.01%'} valueColor={parseFloat(priceImpact) > 3 ? 'var(--red)' : 'var(--green)'} />
-          <Row label="Min received" value={`${minOut} ${toToken.symbol}`} />
+          <Row label="Rate" value={'1 ' + fromToken.symbol + ' = ' + (fromToken.price/toToken.price).toFixed(4) + ' ' + toToken.symbol} />
+          <Row label="Price impact" value={priceImpact ? priceImpact + '%' : '< 0.01%'} valueColor={parseFloat(priceImpact) > 3 ? 'var(--red)' : 'var(--green)'} />
+          <Row label="Min received" value={minOut + ' ' + toToken.symbol} />
           <Row label="Swap fee" value="0.001 OPN" />
-          <Row label="Route" value={`${fromToken.symbol} → ${toToken.symbol}`} badge />
+          <Row label="Route" value={fromToken.symbol + ' to ' + toToken.symbol} badge />
         </div>
       )}
 
-      {status === 'error' && swapError && <div style={S.errorBox}>{swapError}</div>}
+      {swapError && <div style={S.errorBox}>{swapError}</div>}
+
       {status === 'done' && lastTx && (
-        <a href={`https://testnet.iopn.tech/tx/${lastTx}`} target="_blank" rel="noreferrer" style={S.txLink}>View on explorer ↗</a>
+        <a href={'https://testnet.iopn.tech/tx/' + lastTx} target="_blank" rel="noreferrer" style={S.txLink}>View on explorer</a>
       )}
 
-      <button className="swap-btn" onClick={handleSwap} disabled={btnDisabled} style={{
+      <button onClick={handleSwap} disabled={btnDisabled} style={{
         ...S.swapBtn,
-        ...(status==='done'?S.swapBtnDone:{}),
-        ...(btnDisabled&&status!=='loading'&&status!=='done'?S.swapBtnOff:{})
+        ...(status === 'done' ? S.swapBtnDone : {}),
+        ...(btnDisabled && status === 'idle' ? S.swapBtnOff : {})
       }}>
         {status === 'loading' && <span style={S.spinner} />}
         {btnLabel}
@@ -206,7 +211,7 @@ const S = {
   slipActive:{background:'var(--purple-light)',color:'var(--purple)',borderColor:'#A29BFE'},
   faucet:{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FFF9EC',border:'1px solid #FDEAB0',borderRadius:10,padding:'9px 14px',marginBottom:12},
   faucetBtn:{background:'var(--amber)',color:'#7A5200',border:'none',borderRadius:8,padding:'5px 12px',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  panel:{background:'var(--surface2)',borderRadius:'var(--radius-lg)',padding:'13px 15px',marginBottom:3,border:'1.5px solid transparent'},
+  panel:{background:'var(--surface2)',borderRadius:'var(--radius-lg)',padding:'13px 15px',marginBottom:3},
   panelTop:{display:'flex',justifyContent:'space-between',fontSize:13,color:'var(--text2)',marginBottom:11},
   panelLabel:{fontWeight:500},
   panelBal:{color:'var(--text3)',fontSize:12},
@@ -215,9 +220,9 @@ const S = {
   amtInput:{flex:1,background:'none',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',textAlign:'right',fontFamily:'var(--mono)',width:0,minWidth:0},
   usdHint:{fontSize:12,color:'var(--text3)',textAlign:'right',marginTop:5},
   flipWrap:{display:'flex',justifyContent:'center',margin:'2px 0'},
-  flipBtn:{width:34,height:34,borderRadius:9,background:'white',border:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text2)',transition:'background 0.15s'},
+  flipBtn:{width:34,height:34,borderRadius:9,background:'white',border:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text2)'},
   details:{background:'var(--surface2)',borderRadius:12,padding:'11px 13px',margin:'12px 0 2px',border:'1px solid var(--border)'},
-  errorBox:{background:'var(--red-light)',color:'var(--red)',borderRadius:10,padding:'9px 14px',fontSize:13,marginTop:10,border:'1px solid #FFCDD2'},
+  errorBox:{background:'var(--red-light)',color:'var(--red)',borderRadius:10,padding:'9px 14px',fontSize:13,marginTop:10},
   txLink:{display:'block',textAlign:'center',fontSize:13,color:'var(--purple)',marginTop:8,textDecoration:'none'},
   swapBtn:{width:'100%',marginTop:12,padding:15,background:'var(--purple)',color:'#fff',border:'none',borderRadius:'var(--radius-lg)',fontSize:15,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all 0.15s'},
   swapBtnOff:{background:'var(--surface2)',color:'var(--text3)',cursor:'default'},
